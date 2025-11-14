@@ -11,7 +11,7 @@ dependencies = [
     "pydantic-settings>=2.1.0",
     "python-dotenv>=1.0.0",
     "unstructured[pdf]>=0.12.0",
-    "chromadb>=0.4.22",
+    "chromadb>=0.5.0",
     "sentence-transformers>=2.3.1",
     "rank-bm25>=0.2.2",
     "google-generativeai>=0.3.2",
@@ -20,12 +20,13 @@ dependencies = [
     "tqdm>=4.66.0",
     "pypdf>=4.0.0",
     "ipykernel",
-    "tenacity"
+    "tenacity",
+    "FlagEmbedding>=1.2.0"
 ]
 
 [tool.uv]
 dev-dependencies = [
     "pytest>=7.4.0",
     "pytest-asyncio>=0.23.0",
-    "httpx>=0.26.0",
+    "httpx>=0.26.0"
 ]
