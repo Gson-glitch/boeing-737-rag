@@ -90,7 +90,7 @@ class AnswerGenerator:
         citation_pattern = r"\[Document\s+\d+(?:(?:,\s*(?:Document\s+)?\d+)*)\]"
         matches = re.findall(citation_pattern, answer)
 
-        cited_doc_indices = set()
+        cited_doc_indices: set[int] = set()
 
         for match in matches:
             numbers = re.findall(r"\d+", match)

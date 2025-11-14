@@ -120,7 +120,7 @@ class HybridRetriever:
         Fuse rankings using Reciprocal Rank Fusion.
         RRF formula: score(chunk) = sum(1 / (k + rank_i)) for all retrievers
         """
-        rrf_scores = {}
+        rrf_scores: dict[str, float] = {}
 
         for chunk_id, rank in vector_results:
             rrf_scores[chunk_id] = rrf_scores.get(chunk_id, 0.0) + 1.0 / (k + rank + 1)

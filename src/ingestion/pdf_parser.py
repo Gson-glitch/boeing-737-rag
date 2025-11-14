@@ -82,7 +82,10 @@ class PDFParser:
                     continue
 
             parsed.append(
-                ParsedElement(text=text, page_number=page_num, element_type=elem_type)
+                ParsedElement(
+                    text=text, 
+                    page_number=page_num if page_num is not None else 0,
+                    element_type=elem_type)
             )
 
         logger.info(
@@ -131,7 +134,7 @@ class PDFParser:
 
 def group_by_page(elements: list[ParsedElement]) -> dict[int, str]:
     """Group elements by page and concatenate text."""
-    pages = {}
+    pages: dict[int, list[str]] = {}
     for elem in elements:
         if elem.page_number not in pages:
             pages[elem.page_number] = []

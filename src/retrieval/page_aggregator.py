@@ -18,7 +18,7 @@ class PageAggregator:
         if not results:
             return []
 
-        page_scores = {}
+        page_scores: dict[int, float] = {}
         for result in results:
             page_num = result["page_number"]
             score = result.get(score_key, 0.0)

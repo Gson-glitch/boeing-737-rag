@@ -32,7 +32,7 @@ class Embedder:
             max_length=8192,  # BGE-M3 supports up to 8192 tokens
         )
 
-        dense_embeddings = np.array(output["dense_vecs"])
+        dense_embeddings: np.ndarray = np.array(output['dense_vecs'])
         dense_embeddings = dense_embeddings / np.linalg.norm(
             dense_embeddings, axis=1, keepdims=True
         )
@@ -47,6 +47,6 @@ class Embedder:
         output = self.model.encode([query], batch_size=1, max_length=8192)
 
         # Extract dense embedding
-        embedding = np.array(output["dense_vecs"][0])
+        embedding: np.ndarray = np.array(output['dense_vecs'][0])
         embedding = embedding / np.linalg.norm(embedding)
         return embedding

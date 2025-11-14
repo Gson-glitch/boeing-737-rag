@@ -75,7 +75,7 @@ class Contextualizer:
 
         try:
             response = self.model.generate_content(prompt)
-            return response.text.strip()
+            return str(response.text.strip())
         except Exception as e:
             logger.error(
                 f"Context generation FAILED permanently for {chunk.chunk_id}: {e}"
