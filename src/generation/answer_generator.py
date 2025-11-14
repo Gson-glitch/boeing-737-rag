@@ -1,0 +1,131 @@
+import logging
+import re
+from typing import List, Dict, Tuple
+import textwrap
+import google.generativeai as genai
+
+logger = logging.getLogger(__name__)
+
+
+class AnswerGenerator:
+    """
+    Generate answers from retrieved context using LLM.
+    """
+    
+    def __init__(self, api_key: str, model_name: str = "gemini-2.5-flash"):
+        """
+        Initialize answer generator.
+        """
+        genai.configure(api_key=api_key)
+        self.model = genai.GenerativeModel(model_name)
+        logger.info(f"Answer generator ready (model={model_name})")
+    
+    def generate(
+        self,
+        query: str,
+        retrieved_chunks: List[Dict],
+        max_chunks: int = 5
+    ) -> Tuple[str, List[int]]:
+        """
+        Generate answer from retrieved context.
+        """
+        if not retrieved_chunks:
+            return self._no_results_response(query)
+        
+        # Select top chunks
+        top_chunks = retrieved_chunks[:max_chunks]
+        
+        # Build prompt
+        prompt = self._build_prompt(query, top_chunks)
+        
+        # Generate answer
+        logger.info(f"Generating answer for: '{query[:50]}...'")
+        response = self.model.generate_content(prompt)
+        answer = response.text.strip()
+        
+        # Extract cited pages
+        cited_pages = self._extract_cited_pages(answer, top_chunks)
+        
+        logger.info(f"Generated answer with {len(cited_pages)} page citations")
+        return answer, cited_pages
+    
+    def _build_prompt(self, query: str, chunks: List[Dict]) -> str:
+        """
+        Build prompt with context and instructions.
+        """
+        # Format context documents
+        context_docs = []
+        for i, chunk in enumerate(chunks, 1):
+            page = chunk['page_number']
+            text = chunk['original_text']
+            context_docs.append(f"[Document {i} - Page {page}]\n{text}")
+        
+        context_section = "\n\n".join(context_docs)
+        
+        # Build full prompt with proper alignment
+        prompt = textwrap.dedent(f"""\
+            You are an expert assistant for the Boeing 737 Operations Manual.
+
+            CONTEXT DOCUMENTS:
+            {context_section}
+
+            INSTRUCTIONS:
+            1. Answer the user's question using ONLY the information in the context documents above
+            2. Be precise and technical - this is for flight operations
+            3. When you reference information, cite the document number in brackets like [Document 1]
+            4. If you use information from multiple documents, cite all of them like [Document 1, Document 2]
+            5. If the answer cannot be found in the provided context, clearly state: "This information is not available in the provided manual sections."
+            6. Do not add information from your general knowledge
+            7. Keep answers concise but complete
+
+            USER QUESTION:
+            {query}
+
+            ANSWER:
+        """)
+        
+        return prompt
+    
+    def _extract_cited_pages(
+        self,
+        answer: str,
+        chunks: List[Dict]
+    ) -> List[int]:
+        """
+        Extract page numbers from citations in the answer.
+        """
+        # Find all citations like [Document 1], [Document 2, Document 3]
+        citation_pattern = r'\[Document\s+(\d+(?:,\s*\d+)*)\]'
+        matches = re.findall(citation_pattern, answer)
+        
+        cited_doc_indices = set()
+        for match in matches:
+            # Handle comma-separated document numbers
+            doc_nums = [int(n.strip()) for n in match.split(',')]
+            cited_doc_indices.update(doc_nums)
+        
+        # Map document indices to page numbers
+        cited_pages = []
+        for doc_idx in sorted(cited_doc_indices):
+            if 1 <= doc_idx <= len(chunks):
+                page = chunks[doc_idx - 1]['page_number']
+                if page not in cited_pages:
+                    cited_pages.append(page)
+        
+        # Fallback: if no citations found, return all pages from top chunks
+        if not cited_pages:
+            logger.warning("No citations found in answer, using all context pages")
+            cited_pages = [chunk['page_number'] for chunk in chunks]
+            cited_pages = sorted(list(set(cited_pages)))
+        
+        return cited_pages
+    
+    def _no_results_response(self, query: str) -> Tuple[str, List[int]]:
+        """
+        Generate response when no relevant context is found.
+        """
+        answer = (
+            "I could not find relevant information in the Boeing 737 Operations Manual "
+            "to answer your question. Please verify the question or consult the full manual."
+        )
+        return answer, []
