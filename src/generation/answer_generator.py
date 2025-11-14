@@ -12,6 +12,8 @@ class AnswerGenerator:
     Generate answers from retrieved context using LLM.
     """
 
+    CITATION_PATTERN = r'\[Document\s+\d+(?:(?:,\s*(?:Document\s+)?\d+)*)\]'
+
     def __init__(self, api_key: str, model_name: str = "gemini-2.5-flash"):
         """
         Initialize answer generator.
@@ -21,7 +23,10 @@ class AnswerGenerator:
         logger.info(f"Answer generator ready (model={model_name})")
 
     def generate(
-        self, query: str, retrieved_chunks: list[dict], max_chunks: int = 5
+        self,
+        query: str,
+        retrieved_chunks: list[dict],
+        max_chunks: int = 5,
     ) -> tuple[str, list[int]]:
         """
         Generate answer from retrieved context.
@@ -39,9 +44,8 @@ class AnswerGenerator:
         logger.info(f"Generating answer for: '{query[:50]}...'")
         response = self.model.generate_content(prompt)
         answer = response.text.strip()
-
-        # Extract cited pages
         cited_pages = self._extract_cited_pages(answer, top_chunks)
+        answer = re.sub(r" ?" + self.CITATION_PATTERN, "", answer).strip()
 
         logger.info(f"Generated answer with {len(cited_pages)} page citations")
         return answer, cited_pages
@@ -60,12 +64,11 @@ class AnswerGenerator:
         context_section = "\n\n".join(context_docs)
 
         # Build full prompt with proper alignment
-        prompt = textwrap.dedent(f"""\
+        prompt = textwrap.dedent(
+            f"""\
             You are an expert assistant for the Boeing 737 Operations Manual.
-
             CONTEXT DOCUMENTS:
             {context_section}
-
             INSTRUCTIONS:
             1. Answer the user's question using ONLY the information in the context documents above
             2. Be precise and technical - this is for flight operations
@@ -74,21 +77,24 @@ class AnswerGenerator:
             5. If the answer cannot be found in the provided context, clearly state: "This information is not available in the provided manual sections."
             6. Do not add information from your general knowledge
             7. Keep answers concise but complete
-
             USER QUESTION:
             {query}
-
             ANSWER:
-        """)
+        """
+        )
 
         return prompt
 
-    def _extract_cited_pages(self, answer: str, chunks: list[dict]) -> list[int]:
+    def _extract_cited_pages(
+        self,
+        answer: str,
+        chunks: list[dict],
+    ) -> list[int]:
         """
         Extract page numbers from citations in the answer.
         """
-        citation_pattern = r"\[Document\s+\d+(?:(?:,\s*(?:Document\s+)?\d+)*)\]"
-        matches = re.findall(citation_pattern, answer)
+        # Use the class constant
+        matches = re.findall(self.CITATION_PATTERN, answer)
 
         cited_doc_indices: set[int] = set()
 
@@ -121,3 +127,4 @@ class AnswerGenerator:
             "to answer your question. Please verify the question or consult the full manual."
         )
         return answer, []
+
